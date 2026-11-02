@@ -6,7 +6,8 @@
 #   tools/pooplinux/qemu.sh <x86_64|arm64> [kernel cmdline ...]
 #
 # Environment:
-#   O        build directory (default: out/<arch>)
+#   O        build directory to boot from (default: out/<arch>), e.g.
+#            O=out/arm64-max for a pooplinux-max.config build
 #   KERNEL   kernel image (default: the boot image in $O)
 #   INITRD   initramfs, e.g. from mkinitramfs.sh
 #   DISK     disk image attached as virtio-blk (/dev/vda); without
@@ -14,6 +15,10 @@
 #   MEM      guest memory (default: 1G)
 #   SMP      guest CPUs (default: 2)
 #   ACCEL    kvm, hvf or tcg (default: kvm/hvf when usable, else tcg)
+#   MITIGATIONS  "off" adds mitigations=off to the command line. Default:
+#            off for arm64 builds made with pooplinux-max.config (detected
+#            by KPTI being disabled in $O/.config), since arm64 cannot
+#            disable CPU mitigations in Kconfig
 #   QEMU_EXTRA  extra arguments appended to the QEMU command line
 #
 # The console is the serial port on stdio; exit with Ctrl-A x.
@@ -70,6 +75,11 @@ append="console=$console panic=-1"
 if [ -n "$DISK" ] && [ -z "$INITRD" ]; then
 	append="$append root=/dev/vda rw"
 fi
+if [ -z "$MITIGATIONS" ] && [ "$arch" = arm64 ] &&
+   grep -qx '# CONFIG_UNMAP_KERNEL_AT_EL0 is not set' "$out/.config" 2>/dev/null; then
+	MITIGATIONS=off
+fi
+[ "$MITIGATIONS" = off ] && append="$append mitigations=off"
 [ $# -gt 0 ] && append="$append $*"
 
 set -- $machine -accel "$ACCEL" -cpu "$cpu" \

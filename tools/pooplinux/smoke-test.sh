@@ -6,6 +6,9 @@
 # default 300) or the expected output is missing.
 #
 #   BUSYBOX=/path/to/static/busybox tools/pooplinux/smoke-test.sh <x86_64|arm64>
+#
+# Boots the build in $O (default: out/<arch>); the log is saved as
+# $O/smoke-test.log.
 
 set -e
 
@@ -27,6 +30,16 @@ echo "--- tcp_congestion_control"
 cat /proc/sys/net/ipv4/tcp_congestion_control
 echo "--- default_qdisc"
 cat /proc/sys/net/core/default_qdisc
+echo "--- cmdline"
+cat /proc/cmdline
+echo "--- transparent_hugepage"
+cat /sys/kernel/mm/transparent_hugepage/enabled
+echo "--- zswap"
+cat /sys/module/zswap/parameters/enabled /sys/module/zswap/parameters/compressor
+echo "--- vulnerabilities"
+for f in /sys/devices/system/cpu/vulnerabilities/*; do
+	echo "${f##*/}: $(cat "$f")"
+done
 echo "=== SMOKE END"
 poweroff -f
 TEST
@@ -35,7 +48,7 @@ TEST
 
 rc=0
 INITRD=$tmp/initramfs.cpio.gz timeout "${TIMEOUT:-300}" \
-	"$dir/qemu.sh" "$arch" quiet </dev/null >"$tmp/log" 2>&1 || rc=$?
+	env O="$out" "$dir/qemu.sh" "$arch" quiet </dev/null >"$tmp/log" 2>&1 || rc=$?
 tr -d '\r' < "$tmp/log" > "$out/smoke-test.log"
 log=$out/smoke-test.log
 
