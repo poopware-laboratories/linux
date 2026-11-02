@@ -7,6 +7,9 @@
 #
 # Output goes to $O (default: out/<arch>). Extra fragments, e.g.
 # pooplinux-nomitigations.config, are merged after pooplinux.config.
+# $TARGETS selects the make targets (default: the full build), e.g.
+# TARGETS=Image or TARGETS=bzImage to build only the boot image.
+# CONFIG_ONLY=1 stops after the configuration step.
 
 set -e
 
@@ -39,6 +42,7 @@ fi
 
 $make -C "$srctree" O="$out" ARCH=$karch LLVM=1 $extra \
 	$defconfig pooplinux.config "$@"
-$make -C "$srctree" O="$out" ARCH=$karch LLVM=1 $extra -j"$jobs"
+[ -n "$CONFIG_ONLY" ] && { echo "$out/.config"; exit 0; }
+$make -C "$srctree" O="$out" ARCH=$karch LLVM=1 $extra -j"$jobs" $TARGETS
 
 echo "$out/$image"
